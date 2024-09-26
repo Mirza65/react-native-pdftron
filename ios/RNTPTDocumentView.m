@@ -7,6 +7,47 @@
 
 #include <objc/runtime.h>
 
+
+@implementation DocumentView
+
+// Implement this delegate method to control the long press menu
+- (BOOL)toolManager:(PTToolManager *)toolManager
+  shouldShowMenu:(nonnull UIMenuController *)menu
+  forAnnotation:(nullable PTAnnot *)annotation
+  onPageNumber:(int)pageNumber
+{
+    // Check if the tool is selecting text
+    if ([toolManager.tool isKindOfClass:[PTTextSelectTool class]]) {
+        // Automatically copy the selected text
+        NSString *selectedText = toolManager.textSelectionResult.selectedText;
+        UIPasteboard.generalPasteboard.string = selectedText;
+
+        // Optionally, you can send this event back to React Native
+        [self sendTextCopiedEventToReactNative:selectedText];
+
+        // Disable the default menu
+        return NO;
+    }
+
+    // Allow the menu to appear for other cases
+    return YES;
+}
+
+// Function to send copied text back to React Native
+- (void)sendTextCopiedEventToReactNative:(NSString *)selectedText {
+    if (self.bridge) {
+        [self.bridge.eventDispatcher sendAppEventWithName:@"onTextCopied" body:@{@"copiedText": selectedText}];
+    }
+}
+
+@end
+
+- (void)setUpToolManager
+{
+    self.toolManager = [[PTToolManager alloc] init];
+    self.toolManager.delegate = self;  // Set the delegate
+}
+
 static BOOL RNTPT_addMethod(Class cls, SEL selector, void (^block)(id))
 {
     const IMP implementation = imp_implementationWithBlock(block);
